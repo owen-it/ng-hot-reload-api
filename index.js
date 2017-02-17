@@ -1,9 +1,24 @@
-
 var angular = require('angular');
 var map = angular.__NG_HOT_MAP = Object.create(null);
 var slice = Array.prototype.slice;
+var hasOwnProperty = Object.hasOwnProperty;
+var getOwnPropertyNames = Object.getOwnPropertyNames;
+var keys = Object.keys;
+var kebabCase  = require('./utils').kebabCase;
 
-exports.init = function(){
+exports.init = function () {
+    
+    var v = angular.version;
+    exports.compatible = (v.dot == 1 && v.minor >= 5);
+
+    // https://docs.angularjs.org/guide/migration#migrating-from-1-4-to-1-5
+    if (!exports.compatible) {
+        console.warn(
+          '[HMR] You are using a version of ng-hot-reload-api that is ' +
+          'only compatible with AngularJs core ^1.5.0.'
+        )
+        return;
+    }
 
     var __ng__ = angular.module;
     function __module__(){
@@ -58,19 +73,35 @@ exports.update = function(id, component)
     var app = angular.element(document);
     var $injector = app.injector();
 
-    if($injector && target.name){
+    if ($injector && target) {
         var $component = $injector.get(`${target.name}Directive`)[0];
         var $compile   = $injector.get('$compile');
         
-        $component.template = component.template || '';
-        
-        var elements = slice.call(app.find(target.name));
+        if ($component) {
+            $component.template = component.template || '';
 
-        elements.forEach(function(element){
-            var $element = angular.element(element);
-            $element.html($component.template);
-            $compile($element.contents())($element.isolateScope());
+            var originComp = $component.controller.prototype;
+            var targetComp = (component.controller || function () { }).prototype;
+
+            var allProps = getOwnPropertyNames(targetComp);
+            var selProps = keys(targetComp);
+
+            var finallyProps = allProps.filter(function (key) {
+                return selProps.indexOf(key) === -1 && key !== 'constructor';
+            });
+
+            selProps.forEach(function (prop) {
+                originComp[prop] = targetComp[prop];
+            });
+        
+            slice.call(app.find(kebabCase(target.name))).forEach(function(element){
+                var $element = angular.element(element);
+                $element.html($component.template);
+                $compile($element.contents())($element.isolateScope());
+            });
+
             app.find('html').scope().$apply();
-        })
+            console.info(`[NGC] Hot reload ${target.name} from ng-component-load`)
+        }
     }
 }
