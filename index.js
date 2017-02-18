@@ -9,7 +9,7 @@ var kebabCase  = require('./utils').kebabCase;
 exports.init = function () {
     
     var v = angular.version;
-    exports.compatible = (v.dot == 1 && v.minor >= 5);
+    exports.compatible = (v.major == 1 && v.minor >= 5);
 
     // https://docs.angularjs.org/guide/migration#migrating-from-1-4-to-1-5
     if (!exports.compatible) {
