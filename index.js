@@ -23,9 +23,28 @@ exports.init = function () {
     var __ng__ = angular.module;
     function __module__(){
 
-        var hijacked  = __ng__.apply(this, arguments);
+        var hijacked = __ng__.apply(this, arguments);
         
-        if(hijacked.components) return hijacked;
+        if (hijacked.components) return hijacked;
+
+        hijacked.component = (function (h) {
+            var component = h.component;
+
+            return function () {
+                var args = arguments;
+
+                // We map all the components that are 
+                // registered by angular
+                if (args[1].__id && map[args[1].__id]) {
+                    map[args[1].__id].name = args[0];
+                } else {
+                    map[args[1].__id] = { name: args[0] };
+                }
+
+                // Register the component with $__id
+                return component.apply(h, args);
+            }
+        })(hijacked);
         
         function __queued__(name, module){
             var exist = false;
@@ -42,10 +61,10 @@ exports.init = function () {
             if(angular.isObject(components)){
                 Object.keys(components).forEach(function(name){
                     if(components[name].components) __components__(components[name].components);
-                    if(!__queued__(name, hijacked.name)) {
-                        // register component name
-                        map[components[name].__id].name = name;
-                        hijacked.component(name, components[name])
+                    if (!__queued__(name, hijacked.name)) {
+                        var options = components[name];
+                       
+                        hijacked.component(name, options);
                     };
                 })
             }
