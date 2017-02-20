@@ -41,7 +41,7 @@ exports.init = function () {
                     map[args[1].__id] = { name: args[0] };
                 }
 
-                // Register the component with $__id
+                // Register the component
                 return component.apply(h, args);
             }
         })(hijacked);
@@ -59,11 +59,12 @@ exports.init = function () {
         function __components__ (components) {
 
             if(angular.isObject(components)){
-                Object.keys(components).forEach(function(name){
-                    if(components[name].components) __components__(components[name].components);
+                Object.keys(components).forEach(function (name) {
+                    var options = components[name];
+
+                    if (options.components) __components__(options.components);
+
                     if (!__queued__(name, hijacked.name)) {
-                        var options = components[name];
-                       
                         hijacked.component(name, options);
                     };
                 })
