@@ -41,10 +41,6 @@ exports.init = function () {
                     map[args[1].__id] = { name: args[0] };
                 }
 
-                if(args[1].components) {
-                    h.components(args[1].components);
-                }
-
                 // Register the component
                 return component.apply(h, args);
             }
@@ -87,7 +83,7 @@ exports.init = function () {
 exports.register = function(id, component)
 {
     map[id] = {
-        ctro: component
+        component: component
     }
 }
 
@@ -98,7 +94,8 @@ exports.update = function(id, component)
     var $injector = app.injector();
 
     if ($injector && target) {
-        var $component = $injector.get(`${target.name}Directive`)[0];
+        var $name = target.name || target.component.name;
+        var $component = $injector.get(`${$name}Directive`)[0];
         var $compile   = $injector.get('$compile');
         
         if ($component) {
@@ -118,14 +115,14 @@ exports.update = function(id, component)
                 originComp[prop] = targetComp[prop];
             });
         
-            slice.call(app.find(kebabCase(target.name))).forEach(function(element){
+            slice.call(app.find(kebabCase($name))).forEach(function(element){
                 var $element = angular.element(element);
                 $element.html($component.template);
                 $compile($element.contents())($element.isolateScope());
             });
 
             app.find('html').scope().$apply();
-            console.info(`[NGC] Hot reload ${target.name} from ng-component-load`)
+            console.info(`[NGC] Hot reload ${$name} from ng-component-load`)
         }
     }
 }
