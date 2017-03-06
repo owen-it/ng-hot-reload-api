@@ -41,6 +41,10 @@ exports.init = function () {
                     map[args[1].__id] = { name: args[0] };
                 }
 
+                if(args[1].components) {
+                     h.components(args[1].components);
+                }
+
                 // Register the component
                 return component.apply(h, args);
             }
