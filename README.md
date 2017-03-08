@@ -48,11 +48,11 @@ api.install(angular)
 
 angular.module('app', [])
 
-.components({ componentC })
+.component('componentC', componentC)
 
 // OR
 
-.component('componentC', componentC)
+.components({ componentC, /* other components */ })
 ```
 
 ## Usage with Hot Module Replacement
