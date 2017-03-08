@@ -1,12 +1,26 @@
 {
   "name": "ng-hot-reload-api",
   "version": "0.0.7",
-  "description": "",
+  "description": "hot reload api for *.ng components",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/owen-it/ng-hot-reload-api.git"
+  },
+  "keywords": [
+    "api",
+    "angular",
+    "ng",
+    "hot",
+    "reload"
+  ],
+  "author": "Antério Vieira <anteriovieira@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/owen-it/ng-hot-reload-api",
+  "bugs": {
+    "url": "https://github.com/owen-it/ng-hot-reload-api/issues"
+  }
 }
