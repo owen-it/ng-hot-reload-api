@@ -1,5 +1,5 @@
-var angular = require('angular');
-var map = angular.__NG_HOT_MAP = Object.create(null);
+var ng;
+var map = window.NG_HOT_MAP = Object.create(null);
 var slice = Array.prototype.slice;
 var isArray = Array.isArray;
 var hasOwnProperty = Object.hasOwnProperty;
@@ -7,8 +7,10 @@ var getOwnPropertyNames = Object.getOwnPropertyNames;
 var keys = Object.keys;
 var kebabCase  = require('./utils').kebabCase;
 
-exports.init = function () {
-    
+var installed = false;
+
+exports.install = function(angular)
+{ 
     var v = angular.version;
     exports.compatible = (v.major == 1 && v.minor >= 5);
 
@@ -21,68 +23,67 @@ exports.init = function () {
         return;
     }
 
-    var __ng__ = angular.module;
+    if(installed) return;
+    
+    installed = true;
+    
+    ng = angular.__esModule  ? angular.default : angular;
+    
+    wrap(ng)
+}
+
+function wrap(ng) {
+   
+    var __ng__ = ng.module;
     function __module__(){
 
-        var hijacked = __ng__.apply(this, arguments);
+        var moduleNg = __ng__.apply(this, arguments);
         
-        if (hijacked.components) return hijacked;
+        if (moduleNg.components) return moduleNg;
 
-        hijacked.component = (function (h) {
+        moduleNg.component = (function (h) {
             var component = h.component;
 
-            return function () {
-                var args = arguments;
-
+            return function (name, options) {
                 // We map all the components that are 
                 // registered by angular
-                if (args[1].__id && map[args[1].__id]) {
-                    map[args[1].__id].name = args[0];
+                if (options.__id && map[options.__id]) {
+                    map[options.__id].name = name;
                 } else {
-                    map[args[1].__id] = { name: args[0] };
+                    map[options.__id] = { name: name };
                 }
 
-                if(args[1].components) {
-                     h.components(args[1].components);
+                if(options.components) {
+                    h.components(options.components);
                 }
 
                 // Register the component
-                return component.apply(h, args);
+                return component(name, options);
             }
-        })(hijacked);
+        })(moduleNg);
         
-        function __queued__(name, module){
-            var exist = false;
-            hijacked._invokeQueue.forEach(function(proccess){
-                if (proccess[1] === 'component' && proccess[2][0] === name) {
-                    exist = true; return;
-                };
-            })
-            return exist;
-        }
-
         function __components__ (components) {
 
-            if(angular.isObject(components)){
+            if (ng.isObject(components)) {
                 Object.keys(components).forEach(function (name) {
                     var options = components[name];
 
                     if (options.components) __components__(options.components);
 
-                    if (!__queued__(name, hijacked.name)) {
-                        hijacked.component(name, options);
+                    if (!queued(name, moduleNg)) {
+                        moduleNg.component(name, options);
                     };
                 })
             }
 
-            return hijacked;
+            return moduleNg;
         }
 
-        hijacked.components = __components__;
-        return hijacked;
+        moduleNg.components = __components__;
+        return moduleNg;
     }
 
-    angular.module = __module__;
+    ng.module = __module__;
 }
 
 exports.register = function(id, component)
@@ -92,10 +93,10 @@ exports.register = function(id, component)
     }
 }
 
-exports.update = function(id, component)
+exports.reload = function(id, component)
 {
-    var target = angular.__NG_HOT_MAP[id];
-    var app = angular.element(document);
+    var target = map[id];
+    var app = ng.element(document);
     var $injector = app.injector();
 
     if ($injector && target) {
@@ -122,7 +123,7 @@ exports.update = function(id, component)
             });
         
             slice.call(app.find(kebabCase($name))).forEach(function(element){
-                var $element = angular.element(element);
+                var $element = ng.element(element);
                 $element.html($component.template);
                 $compile($element.contents())($element.isolateScope());
             });
@@ -135,4 +136,16 @@ exports.update = function(id, component)
 
 function getControllerPrototype(controller){
     return (isArray(controller) ? controller[controller.length - 1] : controller).prototype;
+}
+
+function queued (name, moduleNg) {
+    var exist = false;
+
+    moduleNg._invokeQueue.forEach(function(proccess){
+        if (proccess[1] === 'component' && proccess[2][0] === name) {
+            exist = true; return;
+        };
+    })
+    
+    return exist;
 }
