@@ -53,6 +53,8 @@ if(module.hot){
 }
 ```
 
+> Note: You can provide the above code through a [webpack loader](https://webpack.js.org/concepts/loaders/). 
+
 ```js
   // App.js
   import angular from 'angular'
