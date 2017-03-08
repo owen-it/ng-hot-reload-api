@@ -16,7 +16,7 @@ const componentC = {
 
 ## Usage 
 
-````js
+```js
 // componentA.js
 const ComponentA = {
   bindings: { title: '<' },
