@@ -1,20 +1,57 @@
 # ng-hot-reload-api
 
-Hot reload API for Angular Components. This is what [ng-component-loader](https://github.com/owen-it/ng-component-loader) use under the hood. It raises the power of Angular `^1.5.x` components by providing a new method called `components()` and the ability to register components in the component itself. But its main feature is the **Hot Module Replacement**.
+Hot reload API for Angular Components. This is what [ng-component-loader](https://github.com/owen-it/ng-component-loader) use under the hood. It raises the power of Angular `^1.5.x` components by providing a new method called `components()` and the ability to register components in the component itself. But its main feature is the [**Hot Module Replacement**](https://webpack.js.org/concepts/hot-module-replacement/).
+
+## New ways to register components
 
 ```js
-// new method
-angular.module('app', []).components({ componentA, componentB })
+// componentA.js
+export default {
+  // ...component options
+}
+```
 
-// Register components
-const componentC = {
-  bindings: { title: '<' },
+```js
+// componentB.js
+export default {
+  // ...component options
+}
+```
+
+```js
+// componentC.js
+export default {
+  bindings: { title: '@' },
   controller: ...,
+  template: `
+    <div>
+      <h1>{{ ::$ctrl.title }}</h1>
+      <component-a></component-a>
+      <component-b></component-b>
+    </div>
+  `
   components: { componentA, componentB }
 }
 ```
 
-## Usage 
+```js
+// app.js
+import angular from 'angular'
+import api from 'ng-hot-reload-api'
+import componentC from './componentC'
+
+api.install(angular)
+
+angular.module('app', [])
+
+.components({ componentC })
+
+// OR
+
+.component('componentC', componentC)
+```
+
+## Usage with Hot Module Replacement
 
 ```js
 // componentA.js
