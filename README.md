@@ -43,12 +43,12 @@ if(module.hot){
     // for each component option object to be hot-reloaded,
     // you need to create a record for it with a unique id.
     // do this once on startup.
-    api.register('generete-unique-id', ComponentA)
+    api.register('unique-id', ComponentA)
   } else {
     // if a component has only its template or render function changed,
     // you can force a re-render for all its active instances without
     // destroying/re-creating them. This keeps all current app state intact.
-    api.reload('generete-unique-id', ComponentA)
+    api.reload('unique-id', ComponentA)
   }
 }
 ```
