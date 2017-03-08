@@ -20,6 +20,9 @@ export default {
 
 ```js
 // componentC.js
+import componentA from './componentA'
+import componentB from './componentB'
+
 export default {
   bindings: { title: '@' },
   controller: ...,
@@ -30,6 +33,7 @@ export default {
       <component-b></component-b>
     </div>
   `,
+  // Register the components
   components: { componentA, componentB }
 }
 ```
