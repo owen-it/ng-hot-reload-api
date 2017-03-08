@@ -29,7 +29,7 @@ export default {
       <component-a></component-a>
       <component-b></component-b>
     </div>
-  `
+  `,
   components: { componentA, componentB }
 }
 ```
