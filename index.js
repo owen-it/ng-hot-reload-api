@@ -8,8 +8,9 @@ var keys = Object.keys;
 var kebabCase  = require('./utils').kebabCase;
 
 var installed = false;
+var isReplaced = false;
 
-exports.install = function(angular)
+exports.install = function(angular, replace)
 { 
     var v = angular.version;
     exports.compatible = (v.major == 1 && v.minor >= 5);
@@ -26,7 +27,8 @@ exports.install = function(angular)
     if(installed) return;
     
     installed = true;
-    
+    isReplaced = replace;
+
     ng = angular.__esModule  ? angular.default : angular;
     
     wrap(ng)
@@ -35,9 +37,12 @@ exports.install = function(angular)
 function wrap(ng) {
    
     var __ng__ = ng.module;
+
     function __module__(){
 
         var moduleNg = __ng__.apply(this, arguments);
+
+        moduleNg.component = registerComponent.bind(moduleNg);
         
         if (moduleNg.components) return moduleNg;
 
@@ -148,4 +153,75 @@ function queued (name, moduleNg) {
     })
     
     return exist;
+}
+
+
+function registerComponent(name, options) {
+
+    if(map[options.__id].instance) return;
+
+    var controller = options.controller || function () { };
+
+    function factory($injector) {
+        function makeInjectable(fn) {
+            if (typeof fn === 'function' || isArray(fn)) {
+                return /** @this */ function (tElement, tAttrs) {
+                    return $injector.invoke(fn, this, { $element: tElement, $attrs: tAttrs });
+                };
+            } else {
+                return fn;
+            }
+        }
+
+        var template = (!options.template && !options.templateUrl ? '' : options.template);
+        var ddo = {
+            controller: controller,
+            controllerAs: identifierForController(options.controller) || options.controllerAs || '$ctrl',
+            template: makeInjectable(template),
+            templateUrl: makeInjectable(options.templateUrl),
+            transclude: options.transclude,
+            scope: {},
+            bindToController: options.bindings || {},
+            restrict: 'E',
+            require: options.require,
+            replace: isReplaced // hijacked 
+        };
+
+        // Copy annotations (starting with $) over to the DDO
+        angular.forEach(options, function (val, key) {
+            if (key.charAt(0) === '$') ddo[key] = val;
+        });
+
+        return ddo;
+    }
+
+    // TODO(pete) remove the following `forEach` before we release 1.6.0
+    // The component-router@0.2.0 looks for the annotations on the controller constructor
+    // Nothing in AngularJS looks for annotations on the factory function but we can't remove
+    // it from 1.5.x yet.
+
+    // Copy any annotation properties (starting with $) over to the factory and controller constructor functions
+    // These could be used by libraries such as the new component router
+    angular.forEach(options, function (val, key) {
+        if (key.charAt(0) === '$') {
+            factory[key] = val;
+            // Don't try to copy over annotations to named controller
+            if (isFunction(controller)) controller[key] = val;
+        }
+    });
+
+    factory.$inject = ['$injector'];
+
+    map[options.__id].instance = factory;
+
+    return this.directive(name, factory);
+}
+
+
+function identifierForController(controller, ident) {
+    if (ident && typeof ident === 'string') return ident;
+    if (typeof controller === 'string') {
+        var match = /^(\S+)(\s+as\s+(\w+))?$/.exec(controller);
+        if (match) return match[3];
+    }
 }
