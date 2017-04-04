@@ -184,7 +184,6 @@ function registerComponent(name, options) {
             bindToController: options.bindings || {},
             restrict: 'E',
             require: options.require,
-            replace: isReplaced // hijacked 
         };
 
         // Copy annotations (starting with $) over to the DDO
