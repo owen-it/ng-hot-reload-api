@@ -93,6 +93,7 @@ function wrap(ng) {
 
 exports.register = function(id, component)
 {
+    console.log('Register: ', id)
     map[id] = {
         component: component
     }
@@ -100,18 +101,32 @@ exports.register = function(id, component)
 
 exports.reload = function(id, component)
 {
-    var target = map[id];
-    var app = ng.element(document);
-    var $injector = app.injector();
+    var rootElem   = document.querySelector('.ng-scope')
+    var appTarget  = angular.element(rootElem)
+    var $rootScope = appTarget.data('$scope')
+
+    var target     = window.NG_HOT_MAP[id];
+    var $injector  = appTarget.data('$injector');
+
+    const unnestR  = (memo, elem) => memo.concat(elem)
+
+    // get component
+    function getComponent (name) {
+        let cmpDefs = $injector.get(name + "Directive"); // could be multiple
+        if (!cmpDefs || !cmpDefs.length) throw new Error(`Unable to find component named '${name}'`);
+        return cmpDefs.reduce(unnestR, [])[0];
+    }
 
     if ($injector && target) {
         var $name = target.name || target.component.name;
-        var $component  = $injector.get(`${$name}Directive`)[0];
+        var $component  = getComponent($name);
         var $compile    = $injector.get('$compile');
         var $controller = $injector.get('$controller');
         
         if ($component) {
             $component.template = component.template || '';
+
+            console.log($component)
 
             var originCtrlPrototype = getControllerPrototype($component.controller);
             var targetCtrlPrototype = getControllerPrototype(component.controller);
@@ -126,14 +141,23 @@ exports.reload = function(id, component)
             selProps.forEach(function (prop) {
                 originCtrlPrototype[prop] = targetCtrlPrototype[prop];
             });
-        
-            slice.call(app.find(kebabCase($name))).forEach(function(element){
+
+            originCtrlPrototype.$onInit = ( targetCtrlPrototype.$onInit || originCtrlPrototype.$onInit )
+
+            var scope = $rootScope.$new()
+            scope[$component.controllerAs] = targetCtrlPrototype
+
+            scope[$component.controllerAs].$onInit()
+
+            console.log( originCtrlPrototype, targetCtrlPrototype )
+
+            slice.call(appTarget.find(kebabCase($name))).forEach(function(element){
                 var $element = ng.element(element);
                 $element.html($component.template);
-                $compile($element.contents())($element.isolateScope());
+                $compile($element.contents())(scope);
             });
 
-            app.find('html').scope().$apply();
+            $rootScope.$apply();
             console.info(`[NGC] Hot reload ${$name} from ng-component-load`)
         }
     }
@@ -225,3 +249,33 @@ function identifierForController(controller, ident) {
         if (match) return match[3];
     }
 }
+
+
+
+
+    // Gets all the directive(s)' inputs ('@', '=', and '<') and outputs ('&')
+    function getComponentBindings(name) {
+        let cmpDefs = $injector.get(name + "Directive"); // could be multiple
+        if (!cmpDefs || !cmpDefs.length) throw new Error(`Unable to find component named '${name}'`);
+        return cmpDefs.map(getBindings).reduce(unnestR, []);
+    }
+
+    // Given a directive definition, find its object input attributes
+    // Use different properties, depending on the type of directive (component, bindToController, normal)
+    const getBindings = (def) => {
+        if (ng.isObject(def.bindToController)) return scopeBindings(def.bindToController);
+        return scopeBindings(def.scope);
+    };
+
+    
+
+    // for ng 1.2 style, process the scope: { input: "=foo" }
+    // for ng 1.3 through ng 1.5, process the component's bindToController: { input: "=foo" } object
+    const scopeBindings = (bindingsObj) => Object.keys(bindingsObj || {})
+        // [ 'input', [ '=foo', '=', 'foo' ] ]
+        .map(key => [key, /^([=<@&])[?]?(.*)/.exec(bindingsObj[key])])
+        // skip malformed values
+        .filter(tuple => ng.isDefined(tuple) && ng.isArray(tuple[1]))
+        // { name: ('foo' || 'input'), type: '=' }
+        .map(tuple => ({ name: tuple[1][2] || tuple[0], type: tuple[1][1] })); 
+
