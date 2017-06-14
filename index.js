@@ -126,8 +126,6 @@ exports.reload = function(id, component)
         if ($component) {
             $component.template = component.template || '';
 
-            console.log($component)
-
             var originCtrlPrototype = getControllerPrototype($component.controller);
             var targetCtrlPrototype = getControllerPrototype(component.controller);
 
@@ -135,7 +133,7 @@ exports.reload = function(id, component)
             var selProps = keys(targetCtrlPrototype);
 
             var finallyProps = allProps.filter(function (key) {
-                return selProps.indexOf(key) === -1 && key !== 'constructor';
+                return selProps.indexOf(key) === -1
             });
 
             selProps.forEach(function (prop) {
@@ -146,10 +144,7 @@ exports.reload = function(id, component)
 
             var scope = $rootScope.$new()
             scope[$component.controllerAs] = targetCtrlPrototype
-
             scope[$component.controllerAs].$onInit()
-
-            console.log( originCtrlPrototype, targetCtrlPrototype )
 
             slice.call(appTarget.find(kebabCase($name))).forEach(function(element){
                 var $element = ng.element(element);
