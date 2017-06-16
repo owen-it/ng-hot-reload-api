@@ -93,7 +93,6 @@ function wrap(ng) {
 
 exports.register = function(id, component)
 {
-    console.log('Register: ', id)
     map[id] = {
         component: component
     }
@@ -101,60 +100,55 @@ exports.register = function(id, component)
 
 exports.reload = function(id, component)
 {
-    var rootElem   = document.querySelector('.ng-scope')
-    var appTarget  = angular.element(rootElem)
-    var $rootScope = appTarget.data('$scope')
+    var $rootElem  = ng.element(document.querySelector('.ng-scope'))
+    var $rootScope = $rootElem.data('$scope')
+    var $injector  = $rootElem.injector()
 
-    var target     = window.NG_HOT_MAP[id];
-    var $injector  = appTarget.data('$injector');
+    var compTarget = window.NG_HOT_MAP[id]
 
-    const unnestR  = (memo, elem) => memo.concat(elem)
-
-    // get component
-    function getComponent (name) {
-        let cmpDefs = $injector.get(name + "Directive"); // could be multiple
-        if (!cmpDefs || !cmpDefs.length) throw new Error(`Unable to find component named '${name}'`);
-        return cmpDefs.reduce(unnestR, [])[0];
-    }
-
-    if ($injector && target) {
-        var $name = target.name || target.component.name;
-        var $component  = getComponent($name);
+    if ($injector && compTarget) {
+        var $component  = $injector.get(`${compTarget.name}Directive`)[0];
         var $compile    = $injector.get('$compile');
         var $controller = $injector.get('$controller');
-        
+
         if ($component) {
-            $component.template = component.template || '';
+            $component.template = component.template || ''
 
-            var originCtrlPrototype = getControllerPrototype($component.controller);
-            var targetCtrlPrototype = getControllerPrototype(component.controller);
+            var invoke = getComponentController($controller, $injector, $rootScope)
 
-            var allProps = getOwnPropertyNames(targetCtrlPrototype);
-            var selProps = keys(targetCtrlPrototype);
+            var c = invoke(compTarget.name, {}, component.bindings, $component.controllerAs)
 
-            var finallyProps = allProps.filter(function (key) {
-                return selProps.indexOf(key) === -1
-            });
+            $component.controller = c.__proto__.constructor
 
-            selProps.forEach(function (prop) {
-                originCtrlPrototype[prop] = targetCtrlPrototype[prop];
-            });
-
-            originCtrlPrototype.$onInit = ( targetCtrlPrototype.$onInit || originCtrlPrototype.$onInit )
-
-            var scope = $rootScope.$new()
-            scope[$component.controllerAs] = targetCtrlPrototype
-            scope[$component.controllerAs].$onInit()
-
-            slice.call(appTarget.find(kebabCase($name))).forEach(function(element){
-                var $element = ng.element(element);
-                $element.html($component.template);
-                $compile($element.contents())(scope);
+            slice.call($rootElem.find(kebabCase(compTarget.name))).forEach(function(element){
+                var $el = ng.element(element);
+                $el.html($component.template);
+                $compile($el.contents())($el.isolateScope());
             });
 
             $rootScope.$apply();
-            console.info(`[NGC] Hot reload ${$name} from ng-component-load`)
+            console.info(`[NGC] Hot reload ${compTarget.name} from ng-component-load`)
         }
+    }
+}
+
+function getComponentController ($controller, $injector, $rootScope) {
+    return function (componentName, locals, bindings, ident) {
+        // get all directive associeted to the component name
+        var directives = $injector.get(`${componentName}Directive`)
+
+        // look fo those directives that are components
+        var candidateDirectives = directives.filter( info => {
+            // components have controller, controllerAs and restrict equals 'E'
+            return info.controller && info.controllerAs && info.restrict === 'E'
+        })
+
+        // get the info of the component
+        var directiveInfo = candidateDirectives[0]
+
+        locals = locals || {}
+        locals.$scope = locals.$scope || $rootScope.$new(true)
+        return $controller(directiveInfo.controller, locals, ident)
     }
 }
 
@@ -245,32 +239,37 @@ function identifierForController(controller, ident) {
     }
 }
 
+$ViewDirectiveFill.$inject = ['$compile', '$controller', '$interpolate', '$injector', '$q'];
+ function $ViewDirectiveFill (  $compile,   $controller,   $interpolate,   $injector,   $q) {
+   return {
+     restrict: 'ECA',
+     priority: -400,
+     compile: function (tElement) {
+       let initial = tElement.html();
+ 
+       return function (scope, $element) {
+         let data = $element.data('$uiView');
+         if (!data) return;
+ 
+         $element.html(data.$template || initial);
+         trace.traceUiViewFill(data, $element.html());
+ 
+         let link = $compile($element.contents());
+         let controller = data.$controller;
+         let controllerAs = data.$controllerAs;
+ 
+         if (controller) {
+            let locals = data.$locals;
+            let controllerInstance = $controller(controller, extend(locals, { $scope: scope, $element: $element }));
+            if (isFunction(controllerInstance.$onInit)) controllerInstance.$onInit();
+            $element.data('$ngControllerController', controllerInstance);
+            $element.children().data('$ngControllerController', controllerInstance);
+          }
+ 
+         link(scope);
+       };
+     }
+   };
+ }
 
-
-
-    // Gets all the directive(s)' inputs ('@', '=', and '<') and outputs ('&')
-    function getComponentBindings(name) {
-        let cmpDefs = $injector.get(name + "Directive"); // could be multiple
-        if (!cmpDefs || !cmpDefs.length) throw new Error(`Unable to find component named '${name}'`);
-        return cmpDefs.map(getBindings).reduce(unnestR, []);
-    }
-
-    // Given a directive definition, find its object input attributes
-    // Use different properties, depending on the type of directive (component, bindToController, normal)
-    const getBindings = (def) => {
-        if (ng.isObject(def.bindToController)) return scopeBindings(def.bindToController);
-        return scopeBindings(def.scope);
-    };
-
-    
-
-    // for ng 1.2 style, process the scope: { input: "=foo" }
-    // for ng 1.3 through ng 1.5, process the component's bindToController: { input: "=foo" } object
-    const scopeBindings = (bindingsObj) => Object.keys(bindingsObj || {})
-        // [ 'input', [ '=foo', '=', 'foo' ] ]
-        .map(key => [key, /^([=<@&])[?]?(.*)/.exec(bindingsObj[key])])
-        // skip malformed values
-        .filter(tuple => ng.isDefined(tuple) && ng.isArray(tuple[1]))
-        // { name: ('foo' || 'input'), type: '=' }
-        .map(tuple => ({ name: tuple[1][2] || tuple[0], type: tuple[1][1] })); 
-
+ //https://github.com/angular-ui/ui-router/commit/c8afc38292f0e39a07e2bee6b77ec82ad6aced27
