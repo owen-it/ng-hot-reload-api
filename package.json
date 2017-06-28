@@ -1,6 +1,6 @@
 {
   "name": "ng-hot-reload-api",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "hot reload api for *.ng components",
   "main": "index.js",
   "scripts": {
