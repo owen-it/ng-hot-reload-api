@@ -134,7 +134,7 @@ exports.reload = function(id, component)
             });
 
             app.find('html').scope().$apply();
-            console.info(`[NGC] Hot reload ${$name} from ng-component-load`)
+            console.info('[NGC] Hot reload ' + $name + ' from ng-component-load')
         }
     }
 }
