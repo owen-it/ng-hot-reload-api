@@ -106,7 +106,7 @@ exports.reload = function(id, component)
 
     if ($injector && target) {
         var $name = target.name || target.component.name;
-        var $component  = $injector.get(`${$name}Directive`)[0];
+        var $component  = $injector.get($name + 'Directive')[0];
         var $compile    = $injector.get('$compile');
         var $controller = $injector.get('$controller');
         
@@ -195,7 +195,7 @@ function registerComponent(name, options) {
         return ddo;
     }
 
-    // TODO(pete) remove the following `forEach` before we release 1.6.0
+    // TODO(pete) remove the following 'forEach' before we release 1.6.0
     // The component-router@0.2.0 looks for the annotations on the controller constructor
     // Nothing in AngularJS looks for annotations on the factory function but we can't remove
     // it from 1.5.x yet.
