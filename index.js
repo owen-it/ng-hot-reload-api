@@ -140,7 +140,7 @@ exports.reload = function(id, component)
 }
 
 function getControllerPrototype(controller){
-    return (isArray(controller) ? controller[controller.length - 1] : controller).prototype;
+    return ((isArray(controller) ? controller[controller.length - 1] : controller) || function(){}).prototype;
 }
 
 function queued (name, moduleNg) {
