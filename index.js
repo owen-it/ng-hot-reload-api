@@ -177,8 +177,8 @@ function registerComponent(name, options) {
             template: makeInjectable(template),
             templateUrl: makeInjectable(options.templateUrl),
             transclude: options.transclude,
-            scope: {},
-            bindToController: options.bindings || {},
+            scope: typeof options.bindings === 'undefined' ? {} : options.bindings,
+            bindToController: true,
             restrict: 'E',
             require: options.require,
             replace: isReplaced // hijacked 
