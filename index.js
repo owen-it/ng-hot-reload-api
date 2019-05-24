@@ -13,13 +13,13 @@ var isReplaced = false;
 exports.install = function(angular, replace)
 { 
     var v = angular.version;
-    exports.compatible = (v.major == 1 && v.minor >= 5);
+    exports.compatible = (v.major == 1 && v.minor >= 3);
 
     // https://docs.angularjs.org/guide/migration#migrating-from-1-4-to-1-5
     if (!exports.compatible) {
         console.warn(
           '[HMR] You are using a version of ng-hot-reload-api that is ' +
-          'only compatible with AngularJs core ^1.5.0.'
+          'only compatible with AngularJs core ^1.3.0.'
         )
         return;
     }
@@ -41,10 +41,9 @@ function wrap(ng) {
     function __module__(){
 
         var moduleNg = __ng__.apply(this, arguments);
+        if (moduleNg.components) return moduleNg;
 
         moduleNg.component = registerComponent.bind(moduleNg);
-        
-        if (moduleNg.components) return moduleNg;
 
         moduleNg.component = (function (h) {
             var component = h.component;
@@ -72,8 +71,6 @@ function wrap(ng) {
             if (ng.isObject(components)) {
                 Object.keys(components).forEach(function (name) {
                     var options = components[name];
-
-                    if (options.components) __components__(options.components);
 
                     if (!queued(name, moduleNg)) {
                         moduleNg.component(name, options);
@@ -212,6 +209,7 @@ function registerComponent(name, options) {
 
     factory.$inject = ['$injector'];
 
+    map[options.__id].name = name
     map[options.__id].instance = factory;
 
     return this.directive(name, factory);
