@@ -9,8 +9,9 @@ var kebabCase  = require('./utils').kebabCase;
 
 var installed = false;
 var isReplaced = false;
+var _controllerAs = '';
 
-exports.install = function(angular, replace)
+exports.install = function(angular, replace, controllerAs)
 { 
     var v = angular.version;
     exports.compatible = (v.major == 1 && v.minor >= 3);
@@ -28,6 +29,7 @@ exports.install = function(angular, replace)
     
     installed = true;
     isReplaced = replace;
+    _controllerAs = controllerAs;
 
     ng = angular.__esModule  ? angular.default : angular;
     
@@ -173,7 +175,7 @@ function registerComponent(name, options) {
         var template = (!options.template && !options.templateUrl ? '' : options.template);
         var ddo = {
             controller: controller,
-            controllerAs: identifierForController(options.controller) || options.controllerAs || '$ctrl',
+            controllerAs: identifierForController(options.controller) || options.controllerAs || _controllerAs || '$ctrl',
             template: makeInjectable(template),
             templateUrl: makeInjectable(options.templateUrl),
             transclude: options.transclude,
