@@ -9,17 +9,18 @@ var kebabCase  = require('./utils').kebabCase;
 
 var installed = false;
 var isReplaced = false;
+var _controllerAs = '';
 
-exports.install = function(angular, replace)
+exports.install = function(angular, replace, controllerAs)
 { 
     var v = angular.version;
-    exports.compatible = (v.major == 1 && v.minor >= 5);
+    exports.compatible = (v.major == 1 && v.minor >= 3);
 
     // https://docs.angularjs.org/guide/migration#migrating-from-1-4-to-1-5
     if (!exports.compatible) {
         console.warn(
           '[HMR] You are using a version of ng-hot-reload-api that is ' +
-          'only compatible with AngularJs core ^1.5.0.'
+          'only compatible with AngularJs core ^1.3.0.'
         )
         return;
     }
@@ -28,6 +29,7 @@ exports.install = function(angular, replace)
     
     installed = true;
     isReplaced = replace;
+    _controllerAs = controllerAs;
 
     ng = angular.__esModule  ? angular.default : angular;
     
@@ -41,10 +43,9 @@ function wrap(ng) {
     function __module__(){
 
         var moduleNg = __ng__.apply(this, arguments);
+        if (moduleNg.components) return moduleNg;
 
         moduleNg.component = registerComponent.bind(moduleNg);
-        
-        if (moduleNg.components) return moduleNg;
 
         moduleNg.component = (function (h) {
             var component = h.component;
@@ -72,8 +73,6 @@ function wrap(ng) {
             if (ng.isObject(components)) {
                 Object.keys(components).forEach(function (name) {
                     var options = components[name];
-
-                    if (options.components) __components__(options.components);
 
                     if (!queued(name, moduleNg)) {
                         moduleNg.component(name, options);
@@ -176,12 +175,12 @@ function registerComponent(name, options) {
         var template = (!options.template && !options.templateUrl ? '' : options.template);
         var ddo = {
             controller: controller,
-            controllerAs: identifierForController(options.controller) || options.controllerAs || '$ctrl',
+            controllerAs: identifierForController(options.controller) || options.controllerAs || _controllerAs || '$ctrl',
             template: makeInjectable(template),
             templateUrl: makeInjectable(options.templateUrl),
             transclude: options.transclude,
-            scope: {},
-            bindToController: options.bindings || {},
+            scope: typeof options.bindings === 'undefined' ? {} : options.bindings,
+            bindToController: true,
             restrict: 'E',
             require: options.require,
             replace: isReplaced // hijacked 
@@ -206,12 +205,13 @@ function registerComponent(name, options) {
         if (key.charAt(0) === '$') {
             factory[key] = val;
             // Don't try to copy over annotations to named controller
-            if (isFunction(controller)) controller[key] = val;
+            if (typeof controller === 'function') controller[key] = val;
         }
     });
 
     factory.$inject = ['$injector'];
 
+    map[options.__id].name = name
     map[options.__id].instance = factory;
 
     return this.directive(name, factory);
